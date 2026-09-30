@@ -1,16 +1,10 @@
 import 'package:lab_9/location.dart';
 import 'package:lab_9/networking.dart';
 
-const apiKey = '6cdeb751bfa7ac9150e827cc5fea7fb1'; // Please replace with your actual API key
-const openWeatherMapURL = 'https://api.openweathermap.org/data/2.5/weather';
-
 class WeatherModel {
-  Future<dynamic> getCityWeather(String cityName) async {
-    NetworkHelper networkHelper = NetworkHelper(
-      '$openWeatherMapURL?q=$cityName&appid=$apiKey&units=metric',
-    );
-
-    var weatherData = await networkHelper.getData();
+  Future<dynamic> getCityWeather(String query) async {
+    NetworkHelper networkHelper = NetworkHelper();
+    var weatherData = await networkHelper.fetchWeather(query);
     return weatherData;
   }
 
@@ -22,11 +16,20 @@ class WeatherModel {
       return null;
     }
 
-    NetworkHelper networkHelper = NetworkHelper(
-      '$openWeatherMapURL?lat=${location.latitude}&lon=${location.longitude}&appid=$apiKey&units=metric',
-    );
-
-    var weatherData = await networkHelper.getData();
+    String query = '${location.latitude},${location.longitude}';
+    NetworkHelper networkHelper = NetworkHelper();
+    var weatherData = await networkHelper.fetchWeather(query);
     return weatherData;
+  }
+
+  Future<List<String>> getSearchSuggestions(String query) async {
+    NetworkHelper networkHelper = NetworkHelper();
+    var results = await networkHelper.fetchSearchSuggestions(query);
+    
+    List<String> suggestions = [];
+    for (var result in results) {
+      suggestions.add('${result['name']}, ${result['country']}');
+    }
+    return suggestions;
   }
 }

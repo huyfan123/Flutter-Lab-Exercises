@@ -13,18 +13,17 @@ class LocationScreen extends StatefulWidget {
 
 class _LocationScreenState extends State<LocationScreen> {
   WeatherModel weather = WeatherModel();
-  late int temperature;
-  late int feelsLike;
-  late String weatherIcon;
-  late String cityName;
-  late String description;
-  late String country;
-  late int humidity;
-  late double windSpeed;
-  late int minTemp;
-  late int maxTemp;
   
-  final TextEditingController _searchController = TextEditingController();
+  // Weather data variables
+  int temperature = 0;
+  String weatherIconUrl = '';
+  String cityName = '';
+  String description = '';
+  String country = '';
+  int humidity = 0;
+  double windSpeed = 0.0;
+  int minTemp = 0;
+  int maxTemp = 0;
 
   @override
   void initState() {
@@ -36,8 +35,7 @@ class _LocationScreenState extends State<LocationScreen> {
     setState(() {
       if (weatherData == null) {
         temperature = 0;
-        feelsLike = 0;
-        weatherIcon = 'Error';
+        weatherIconUrl = '';
         description = 'Unable to get weather data';
         cityName = '';
         country = '';
@@ -47,50 +45,29 @@ class _LocationScreenState extends State<LocationScreen> {
         maxTemp = 0;
         return;
       }
-      
-      double temp = weatherData['main']['temp'];
-      temperature = temp.round();
-      
-      double feels = weatherData['main']['feels_like'];
-      feelsLike = feels.round();
-      
-      description = weatherData['weather'][0]['description'];
-      
-      var condition = weatherData['weather'][0]['id'];
-      weatherIcon = _getWeatherIcon(condition);
-      
-      cityName = weatherData['name'];
-      country = weatherData['sys']['country'];
-      
-      humidity = weatherData['main']['humidity'];
-      windSpeed = weatherData['wind']['speed'].toDouble();
-      
-      double min = weatherData['main']['temp_min'];
-      minTemp = min.round();
-      
-      double max = weatherData['main']['temp_max'];
-      maxTemp = max.round();
-    });
-  }
 
-  String _getWeatherIcon(int condition) {
-    if (condition < 300) {
-      return '🌩';
-    } else if (condition < 400) {
-      return '🌧';
-    } else if (condition < 600) {
-      return '☔️';
-    } else if (condition < 700) {
-      return '☃️';
-    } else if (condition < 800) {
-      return '🌫';
-    } else if (condition == 800) {
-      return '☀️';
-    } else if (condition <= 804) {
-      return '☁️';
-    } else {
-      return '🤷‍';
-    }
+      var current = weatherData['current'];
+      var location = weatherData['location'];
+      var forecastDay = weatherData['forecast']['forecastday'][0]['day'];
+
+      temperature = (current['temp_c'] as num).round();
+      description = current['condition']['text'];
+      
+      String iconUrl = current['condition']['icon'];
+      if (iconUrl.startsWith('//')) {
+        iconUrl = 'https:$iconUrl';
+      }
+      weatherIconUrl = iconUrl;
+      
+      cityName = location['name'];
+      country = location['country'];
+      
+      humidity = current['humidity'];
+      windSpeed = (current['wind_kph'] as num).toDouble();
+      
+      minTemp = (forecastDay['mintemp_c'] as num).round();
+      maxTemp = (forecastDay['maxtemp_c'] as num).round();
+    });
   }
 
   @override
@@ -119,32 +96,51 @@ class _LocationScreenState extends State<LocationScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Enter city name (e.g., Hanoi)',
-                          prefixIcon: const Icon(Icons.search),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                        ),
+                      child: Autocomplete<String>(
+                        optionsBuilder: (TextEditingValue textEditingValue) async {
+                          if (textEditingValue.text.isEmpty) {
+                            return const Iterable<String>.empty();
+                          }
+                          try {
+                            return await weather.getSearchSuggestions(textEditingValue.text);
+                          } catch (e) {
+                            return const Iterable<String>.empty();
+                          }
+                        },
+                        onSelected: (String selection) async {
+                          // Selection is "City, Country"
+                          var weatherData = await weather.getCityWeather(selection);
+                          updateUI(weatherData);
+                        },
+                        fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                          return TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            onEditingComplete: onEditingComplete,
+                            decoration: InputDecoration(
+                              hintText: 'Enter city name (e.g., Hanoi)',
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Colors.grey),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 10),
                     ElevatedButton(
-                      onPressed: () async {
-                        if (_searchController.text.isNotEmpty) {
-                          var weatherData = await weather.getCityWeather(_searchController.text);
-                          updateUI(weatherData);
-                        }
+                      onPressed: () {
+                        // Normally the button would search the current text,
+                        // but with Autocomplete, selecting from dropdown is preferred.
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3498DB),
@@ -172,6 +168,7 @@ class _LocationScreenState extends State<LocationScreen> {
                       const SizedBox(width: 5),
                       Text(
                         '$cityName, $country',
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -189,10 +186,16 @@ class _LocationScreenState extends State<LocationScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  Text(
-                    weatherIcon,
-                    style: const TextStyle(fontSize: 80),
-                  ),
+                  if (weatherIconUrl.isNotEmpty)
+                    Image.network(
+                      weatherIconUrl,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.error, size: 80),
+                    )
+                  else 
+                    const Icon(Icons.cloud, size: 100, color: Colors.grey),
                   const SizedBox(height: 10),
                   Text(
                     description,
@@ -211,14 +214,6 @@ class _LocationScreenState extends State<LocationScreen> {
                       color: Color(0xFF2C3E50),
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Feels like $feelsLike°C',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
                   const SizedBox(height: 40),
                   GridView.count(
                     crossAxisCount: 2,
@@ -229,7 +224,7 @@ class _LocationScreenState extends State<LocationScreen> {
                     childAspectRatio: 2.5,
                     children: [
                       _buildInfoCard(Icons.water_drop, 'Humidity', '$humidity%', Colors.blue),
-                      _buildInfoCard(Icons.air, 'Wind Speed', '$windSpeed m/s', Colors.lightBlue),
+                      _buildInfoCard(Icons.air, 'Wind Speed', '$windSpeed kph', Colors.lightBlue),
                       _buildInfoCard(Icons.thermostat, 'Min Temp', '$minTemp°C', Colors.blue),
                       _buildInfoCard(Icons.thermostat, 'Max Temp', '$maxTemp°C', Colors.blue),
                     ],

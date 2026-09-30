@@ -32,10 +32,11 @@ class MiCardApp extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 10.0), // Khoảng cách giữa 2 text
               Text(
                 'FLUTTER DEVELOPER',
                 style: TextStyle(
-                  fontFamily: 'Source Sans Pro',
+                  fontFamily: 'Source Sans 3',
                   color: Colors.deepOrange.shade100,
                   fontSize: 20.0,
                   letterSpacing: 2.5,
@@ -58,7 +59,7 @@ class MiCardApp extends StatelessWidget {
                     '+84 94 312 4423',
                     style: TextStyle(
                       color: Colors.deepOrange.shade900,
-                      fontFamily: 'Source Sans Pro',
+                      fontFamily: 'Source Sans 3',
                       fontSize: 20.0,
                     ),
                   ),
@@ -75,7 +76,7 @@ class MiCardApp extends StatelessWidget {
                     'huypc.23it@vku.udn.vn',
                     style: TextStyle(
                       color: Colors.deepOrange.shade900,
-                      fontFamily: 'Source Sans Pro',
+                      fontFamily: 'Source Sans 3',
                       fontSize: 18.0,
                     ),
                   ),
